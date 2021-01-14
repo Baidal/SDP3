@@ -1,5 +1,5 @@
 'use strict'
-const port = process.env.PORT || 7005;
+const port = process.env.PORT || 3000;
 
 const https = require('https');
 const express = require('express');
@@ -8,8 +8,8 @@ const mongojs = require('mongojs');
 const fs = require('fs');
 
 const opciones = {
-    key: fs.readFileSync('./../api-rest/cert/key.pem'),
-    cert: fs.readFileSync('./../api-rest/cert/cert.pem')
+    key: fs.readFileSync('./cert/key.pem'),
+    cert: fs.readFileSync('./cert/cert.pem')
 }
 
 const app = express();
@@ -18,7 +18,7 @@ app.use(logger('dev'));
 app.use(express.urlencoded( { extended: false } ));
 app.use(express.json());
 
-var db = mongojs('mongodb+srv://luis:luisSD2020@sd.7nmy6.mongodb.net/SD?retryWrites=true&w=majority',["aviones"]);     //Base de datos de la app
+var db = mongojs("SD");     //Base de datos de la app
 var id = mongojs.ObjectID;  //Convertir un id textual en un objeto mongojs
 
 //Cada vez que tengamos el parametro colecciones se llamará a esta funcion que conectará con la BD.
@@ -54,14 +54,24 @@ function auth(req, res, next) {
 }
 
 //Rutas y controladores
+app.get('/api', (req, res, next) => {
+    console.log('GET /api');
+    console.log(req.params);
+    console.log(req.collection);
 
+    db.getCollectionNames((err, colecciones) => {
+
+        if (err) return next(err);
+        console.log(colecciones);
+        res.json({result: 'OK', colecciones: colecciones});
+
+    });
+});
 
 app.get('/api/:colecciones', (req, res, next) => {
-    const queColeccion = req.params.colecciones;
-    
-    console.log(`GET /api/${queColeccion}`);
-    //console.log(req.params);
-    //console.log(req.collection);
+    console.log('GET /api/:colecciones');
+    console.log(req.params);
+    console.log(req.collection);
 
     req.collection.find((err, coleccion) => {
         if (err) return next(err);
@@ -77,20 +87,15 @@ app.get('/api/:colecciones', (req, res, next) => {
 
 });
 
-
-app.get('/api/:colecciones/:nombre', (req, res, next) => {
+app.get('/api/:colecciones/:id', (req, res, next) => {
     //console.log('GET /api/:colecciones');
     //console.log(req.params);
     //console.log(req.collection);
 
-    
-
-    const queNombre = req.params.nombre;
+    const queId = req.params.id;
     const queColeccion = req.params.colecciones;
 
-    console.log(`GET /api/${queColeccion}/${queNombre}`);
-
-    req.collection.find({nombre:  queNombre}, (err, elemento) => {
+    req.collection.findOne({_id: id(queId) }, (err, elemento) => {
         if (err) return next(err);
         
         console.log(elemento);
@@ -105,37 +110,17 @@ app.get('/api/:colecciones/:nombre', (req, res, next) => {
 
 });
 
-app.get('/api/:colecciones/id/:id',(req,res,next) => {
+app.put('/api/:colecciones/:id', auth, (req,res,next) => {
+
     const queId = req.params.id;
     const queColeccion = req.params.colecciones;
-
-    console.log(`GET /api/${queColeccion}/id/${queId}`);
-
-    req.collection.find((err,coleccion) => {
-        if (err) return next(err);
-
-        res.json({
-            result: 'OK',
-            colección: req.params.colecciones,
-            elemento: coleccion
-
-        })
-
-    });
-
-
-
-});
-
-app.put('/api/:colecciones/:nombre', auth, (req,res,next) => {
-
-    const queNombre = req.params.nombre;
-    const queColeccion = req.params.colecciones;
     const elementoNuevo = req.body;
+    console.log("Me han llamado");
+
 
     req.collection.update(
         
-        {nombre: queNombre},
+        {_id: id(queId)},
         {$set: elementoNuevo},
         {safe: true, multi: false },
         (err, result) => {
@@ -145,7 +130,7 @@ app.put('/api/:colecciones/:nombre', auth, (req,res,next) => {
             res.json({
                 result: 'OK',
                 coleccion: queColeccion,
-                nombre: queNombre,
+                _id: queId,
                 resultado: result
             });
         }
@@ -160,8 +145,6 @@ app.delete('/api/:colecciones/:id', auth, (req,res,next) => {
 
     let queId = req.params.id;
     let queColeccion = req.params.colecciones;
-
-    console.log(`DELETE /api/${queColeccion}/${queId}`);
 
     req.collection.remove(
         
@@ -204,7 +187,7 @@ app.post('/api/:colecciones', auth, (req, res, next) => {
 });
 
 https.createServer(opciones, app).listen(port, () => {
-    console.log(`API RESTful de coches ejecutándose en https://localhost:${port}/api/:colecciones/:id`);
+    console.log(`API RESTful ejecutándose en https://localhost:${port}/api/:colecciones/:id`);
 });
 /*
 app.listen(port, () => {

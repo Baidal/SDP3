@@ -1,0 +1,23 @@
+{
+  "name": "auth",
+  "version": "1.0.0",
+  "description": "Pruebas en la autentificacion y autorizacion",
+  "main": "01_crypt.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "auth",
+    "crypt",
+    "jwt",
+    "hash",
+    "salt"
+  ],
+  "author": "Luis Vidal Rico",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.0.0",
+    "jwt-simple": "^0.5.6",
+    "moment": "^2.29.1"
+  }
+}

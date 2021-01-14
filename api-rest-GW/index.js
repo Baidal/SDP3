@@ -1,5 +1,5 @@
 'use strict'
-const port = process.env.PORT || 3100;
+const port = process.env.PORT || 7003;
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";                 //IGNORAR TODOS LOS CERTIFICADOS
 const https = require('https');
 const express = require('express');
@@ -23,9 +23,10 @@ const opciones = {
 }
 
 const URL_WS = "https://localhost:3000/api";
-const URL_Coches = "https://localhost:2900/api";
-const URL_Aviones = "https://localhost:2800/api";
-const URL_Hoteles = "https://localhost:2700/api";
+const URL_Coches = "https://" + require("./config").ip_equipo1 + ":7004/api";
+const URL_Aviones = "https://" + require("./config").ip_equipo2 + ":7005/api";
+const URL_Hoteles = "https://" +require("./config").ip_equipo3+":7006/api";
+const URL_Paquetes = "https://" +require("./config").ip_equipo3+":7007/api";
 
 const app = express();
 
@@ -71,121 +72,59 @@ app.get('/api', (req, res, next) => {
 });*/
 
 app.get('/api/paquetes',auth,(req,res,next) => {
-    /*
-    const current_url = url.parse(req.url,true);
+    const queURL = URL_Paquetes + "/paquetes";
+    const queToken = req.headers.authorization.split(" ")[1];
 
-    const search_params = current_url.query;
-
-    //console.log(search_params.pepito);
-
-    if(search_params.id){
-        res.json({"respuesta":"ok"});
-    }else
-        res.json({"respuesta":"no"});*/
-    
-    var paquetes = mongojs('mongodb+srv://luis:luisSD2020@sd.7nmy6.mongodb.net/SD?retryWrites=true&w=majority');
-    req.collection = paquetes.collection("paquetes");
-
-    req.collection.find((err,paquete) => {
-        if (err) return next(err);
-
-        res.json({
+    fetch(queURL).then(res => res.json()).then(json => 
+        {res.json({
             result: 'OK',
-            paquetes: paquete
-
+            paquetes:json.Paquetes
         });
-
     });
+
 
 });
 
 
 app.post('/api/paquetes',auth,(req,res,next) => {
+
+    const queURL = URL_Paquetes + "/paquetes";
+    const queToken = req.headers.authorization.split(" ")[1];
+
     const current_url = url.parse(req.url,true);
-
     const search_params = current_url.query;
-
-    //console.log(search_params.ciudad_avion.toString());
 
     if(!(search_params.ciudad_avion && search_params.ciudad_hotel && search_params.ciudad_coche)){
 
-        res.json({"Error": "No has introducido uno de los nombres."});
+        res.json({Error: "No has introducido uno de los nombres en la URL."});
 
     }else{
-        var paquetes = mongojs('mongodb+srv://luis:luisSD2020@sd.7nmy6.mongodb.net/SD?retryWrites=true&w=majority');
-        req.collection = paquetes.collection("aviones");
 
-        var id_avion = null;
-        var id_coche = "";
-        var id_hotel = "";
+        const cuerpo = {ciudad_coche: search_params.ciudad_coche,
+                        ciudad_hotel: search_params.ciudad_hotel,
+                        ciudad_avion: search_params.ciudad_avion};
 
-        console.log(search_params.ciudad_coche);
-        
-        req.collection.findOne({ciudad_llegada: search_params.ciudad_avion,reservado: "no"}, (err,avion) => {
-            if (err) return next(err);
-        
-            if(avion != null)
-                id_avion = avion._id;
-            
-            req.collection = paquetes.collection("coches");
-
-            req.collection.findOne({ciudad: search_params.ciudad_coche,reservado: "no"}, (error,coche) => {
-                if (err) return next(err);
-
-                if(coche != null)
-                    id_coche = coche._id;
-                
-                //console.log("avion: " + id_avion + "coche: " + id_coche);
-                req.collection = paquetes.collection("hoteles");
-
-                req.collection.findOne({ciudad: search_params.ciudad_hotel,reservado: "no"}, (error_ciudad,hotel) => {
-                    if (error_ciudad) return next(err);
-
-                    if(hotel != null)
-                        id_hotel = hotel._id;
-
-                    
-                    console.log("avion: " + id_avion + "coche: " + id_coche + "ciudad: " + id_hotel);
-
-                    req.collection = paquetes.collection("paquetes");
-
-                    req.collection.findOne({id_avion: id_avion.toString(),id_coche: id_coche.toString(),id_hotel: id_hotel.toString()}, (error_paquete,existe) => {
-                        if(error_paquete) return next(error_paquete);
-
-                        console.log(existe);
-
-                        if(existe != null){
-                            res.json({Error: "Ya existe el paquete en el sistema."});
-                        }else{
-                            var json_string = '{"id_avion":"' + id_avion + '", "id_coche":"' + id_coche + '", "id_hotel":"' + id_hotel +'", "reservado":"no"}';
-                    
-                            var json_file = JSON.parse(json_string);
-
-                            req.collection.save(json_file,(err,elementoGuardado) => {
-                                if(err) return next(err);
-
-                                res.json({
-                                    result: 'Paquete guardado.',
-                                    IDs: json_file,
-                                    coche: coche,
-                                    hotel: hotel,
-                                    avion: avion
-                                });
-
-                            });
-                        }
-                    });
-
-                });
-
-
-
-
+        fetch(queURL,{
+                    method: 'POST',
+                    body: JSON.stringify(cuerpo),
+                    headers:{
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${queToken}`
+                    }
+        })
+        .then(res => res.json())
+        .then(
+            json => 
+            {res.json({
+                result: json.Error,
+                IDs: json.IDs,
+                coche: json.coche,
+                hotel: json.hotel,
+                avion: json.avion
             });
-
-        });
+        }
+        )
     }
-
 
 
 });
@@ -193,8 +132,35 @@ app.post('/api/paquetes',auth,(req,res,next) => {
 app.post('/api/paquetes/reservar/:id',auth,(req,res,next) => {
 
     const queId = req.params.id;
+    const queToken = req.headers.authorization.split(" ")[1];
+    const queURL = URL_Paquetes + `/paquetes/reservar/${queId}`
 
+    const email = req.body.email;
+    const jwt = req.body.jwt;
 
+    const cuerpo = {
+        email: email,
+        jwt: jwt
+    };
+
+    fetch(queURL,{
+                method: 'POST',
+                body: JSON.stringify(cuerpo),
+                headers:{
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${queToken}`
+                }
+    })
+    .then(res => res.json())
+    .then(
+        json => 
+        
+        {res.json({
+            resultado: json.Respuesta
+        });
+        
+        }
+    )
 
 
 });
